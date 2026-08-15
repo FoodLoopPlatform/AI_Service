@@ -12,7 +12,7 @@ Available context provided in the request:
 
 Optional external context available:
 - weather (e.g. extreme weather impacting foot traffic or perishable shelf-life)
-- local_events (e.g. festivals, holidays, or major events near store location)
+- local_events (e.g. public holidays or official occasions relevant to the store's country)
 
 Request additional context ONLY when it is materially relevant to understanding demand or sell-through risk. If the provided context is sufficient, return is_sufficient as true and missing_context as an empty list [].
 
@@ -49,11 +49,11 @@ Provided inputs:
    - inventory_pressure (LOW / MEDIUM / HIGH)
    - demand_pressure (LOW / MEDIUM / HIGH)
 4. Optional external weather context (if available)
-5. Optional external local events context (if available)
+5. Optional external holiday / occasion context (if available under local_events)
 
 GUIDELINES:
 - The deterministic risk signals are authoritative evidence calculated by business rules. Use them as primary inputs rather than redefining their thresholds.
-- External weather or event context can influence risk interpretation when materially relevant (e.g. severe rain or nearby festival impacting sales velocity).
+- External weather or public holiday context can influence risk interpretation when materially relevant (e.g. severe rain or an upcoming public holiday impacting store demand).
 - Classify the risk_level as LOW, MEDIUM, HIGH, or CRITICAL.
 
 STRICT CONSTRAINTS & AUDIT RULES:
@@ -75,7 +75,7 @@ RISK_ASSESSMENT_PROMPT = ChatPromptTemplate.from_messages(
             "Request Data:\n{request_json}\n\n"
             "Deterministic Risk Signals:\n{risk_signals_json}\n\n"
             "Weather Context:\n{weather_context_json}\n\n"
-            "Local Events Context:\n{events_context_json}",
+            "Public Holiday / Local Events Context:\n{events_context_json}",
         ),
     ]
 )
