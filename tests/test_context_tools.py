@@ -1,9 +1,10 @@
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 import pytest
 from pydantic import ValidationError
 
 from app.tools.events import (
-    LocalEvent,
+    Holiday,
+    HolidayContext,
     LocalEventsContext,
     LocalEventsToolError,
     get_local_events,
@@ -55,49 +56,31 @@ def test_weather_tool_invalid_coordinates_raises_exception():
 
 
 def test_events_tool_valid():
-    from_time = datetime(2026, 8, 15, 10, 0, 0, tzinfo=timezone.utc)
-    to_time = datetime(2026, 8, 16, 10, 0, 0, tzinfo=timezone.utc)
+    from_time = datetime(2026, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
+    to_time = datetime(2026, 1, 31, 23, 59, 59, tzinfo=timezone.utc)
 
-    context = get_local_events(37.7749, -122.4194, from_time, to_time)
+    context = get_local_events(30.0444, 31.2357, from_time, to_time)
+    assert isinstance(context, HolidayContext)
     assert isinstance(context, LocalEventsContext)
-    assert len(context.events) > 0
-    for event in context.events:
-        assert event.distance_km >= 0
-        assert event.expected_attendance >= 0
+    assert len(context.holidays) > 0
+    for holiday in context.holidays:
+        assert isinstance(holiday.date, date)
+        assert len(holiday.name) > 0
+        assert holiday.country_code == "EG"
 
 
-def test_events_tool_empty_when_window_too_short():
-    from_time = datetime(2026, 8, 15, 10, 0, 0, tzinfo=timezone.utc)
-    to_time = datetime(2026, 8, 15, 11, 0, 0, tzinfo=timezone.utc)
+def test_events_tool_empty_when_window_outside_holidays():
+    from_time = datetime(2026, 2, 1, 0, 0, 0, tzinfo=timezone.utc)
+    to_time = datetime(2026, 2, 5, 0, 0, 0, tzinfo=timezone.utc)
 
-    context = get_local_events(37.7749, -122.4194, from_time, to_time)
-    assert isinstance(context, LocalEventsContext)
-    assert context.events == []
-
-
-def test_local_event_negative_distance_fails():
-    with pytest.raises(ValidationError):
-        LocalEvent(
-            name="Test Event",
-            starts_at=datetime.now(timezone.utc),
-            distance_km=-2.0,
-            expected_attendance=500,
-        )
+    context = get_local_events(30.0444, 31.2357, from_time, to_time)
+    assert isinstance(context, HolidayContext)
+    assert context.holidays == []
 
 
-def test_local_event_negative_attendance_fails():
-    with pytest.raises(ValidationError):
-        LocalEvent(
-            name="Test Event",
-            starts_at=datetime.now(timezone.utc),
-            distance_km=1.0,
-            expected_attendance=-50,
-        )
+def test_events_tool_naive_datetime_raises_exception():
+    from_time = datetime(2026, 1, 1, 0, 0, 0)
+    to_time = datetime(2026, 1, 10, 0, 0, 0, tzinfo=timezone.utc)
 
-
-def test_events_tool_invalid_coordinates_raises_exception():
-    from_time = datetime(2026, 8, 15, 10, 0, 0, tzinfo=timezone.utc)
-    to_time = datetime(2026, 8, 16, 10, 0, 0, tzinfo=timezone.utc)
-
-    with pytest.raises(LocalEventsToolError, match="Invalid longitude"):
-        get_local_events(37.7749, -200.0, from_time, to_time)
+    with pytest.raises(LocalEventsToolError, match="timezone-aware"):
+        get_local_events(30.0444, 31.2357, from_time, to_time)
