@@ -1,6 +1,7 @@
 from datetime import datetime
 from enum import Enum
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
+
 
 
 class Route(str, Enum):
@@ -50,6 +51,9 @@ class LocationContext(BaseModel):
     store_id: str
 
 
+from app.schemas.store_policy import StorePolicy
+
+
 class MonitoringRequest(BaseModel):
     product: ProductMetadata
     inventory: InventoryMetrics
@@ -57,6 +61,18 @@ class MonitoringRequest(BaseModel):
     expiry: ExpiryContext
     location: LocationContext
     timestamp: datetime
+    store_policy: StorePolicy | None = Field(default=None, description="Optional backend store policy configuration.")
+
+    @model_validator(mode="after")
+    def validate_store_id_consistency(self) -> "MonitoringRequest":
+        if self.store_policy is not None:
+            if self.location.store_id != self.store_policy.store_id:
+                raise ValueError(
+                    f"store_id mismatch: location store_id ('{self.location.store_id}') "
+                    f"does not match store_policy store_id ('{self.store_policy.store_id}')."
+                )
+        return self
+
 
 
 class MonitoringResponse(BaseModel):

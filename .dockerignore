@@ -1,0 +1,11 @@
+.git
+.venv
+.env
+.pytest_cache
+.antigravity
+.gemini
+__pycache__
+*.pyc
+tests
+artifacts
+media

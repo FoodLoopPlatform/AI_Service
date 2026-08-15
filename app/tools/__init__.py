@@ -1,7 +1,13 @@
 from app.tools.events import (
+    Holiday,
+    HolidayContext,
+    HolidayProvider,
     LocalEvent,
     LocalEventsContext,
     LocalEventsToolError,
+    MockHolidayProvider,
+    NagerDateHolidayProvider,
+    get_holiday_provider,
     get_local_events,
 )
 from app.tools.weather import (
@@ -20,4 +26,10 @@ __all__ = [
     "LocalEventsContext",
     "LocalEvent",
     "LocalEventsToolError",
+    "Holiday",
+    "HolidayContext",
+    "HolidayProvider",
+    "MockHolidayProvider",
+    "NagerDateHolidayProvider",
+    "get_holiday_provider",
 ]
