@@ -7,7 +7,7 @@ name = "foodloop-ai-service"
 version = "0.1.0"
 description = "FoodLoop AI Service - Standalone Python microservice communicating with the FoodLoop .NET backend"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.10"
 dependencies = [
     "fastapi>=0.110.0",
     "uvicorn[standard]>=0.28.0",
@@ -16,7 +16,11 @@ dependencies = [
     "langchain-core>=0.2.0",
     "langchain-openai>=0.1.0",
     "langgraph>=0.1.0",
+    "qdrant-client>=1.7.0",
+    "httpx>=0.27.0",
+    "sentence-transformers>=2.2.2",
 ]
+
 
 [project.optional-dependencies]
 dev = [
