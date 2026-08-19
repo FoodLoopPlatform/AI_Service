@@ -80,21 +80,26 @@ class VectorPricingKnowledgeRetriever(PricingKnowledgeRetriever):
         if not store_id or not isinstance(store_id, str) or not store_id.strip():
             raise ValueError("store_id is mandatory and must be a non-empty string.")
 
-        query_texts = [build_product_query_text(p) for p in products]
-        query_embeddings = self.embedding_provider.embed_queries(query_texts)
+        try:
+            query_texts = [build_product_query_text(p) for p in products]
+            query_embeddings = self.embedding_provider.embed_queries(query_texts)
 
-        all_items: list[PricingKnowledgeItem] = []
-        for product, query_vec in zip(products, query_embeddings):
-            items = self.vector_store.search(
-                query_vec,
-                store_id=store_id,
-                product_id=product.product_id,
-                category=product.category,
-                top_k=self.top_k,
-            )
-            all_items.extend(items)
+            all_items: list[PricingKnowledgeItem] = []
+            for product, query_vec in zip(products, query_embeddings):
+                items = self.vector_store.search(
+                    query_vec,
+                    store_id=store_id,
+                    product_id=product.product_id,
+                    category=product.category,
+                    top_k=self.top_k,
+                )
+                all_items.extend(items)
 
-        return all_items
+            return all_items
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning("Vector pricing knowledge retrieval failed (%s), defaulting to empty knowledge context.", e)
+            return []
 
 
 class DefaultPricingKnowledgeRetriever(PricingKnowledgeRetriever):

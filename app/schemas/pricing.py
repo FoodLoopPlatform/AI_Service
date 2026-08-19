@@ -14,6 +14,8 @@ from app.tools.events import LocalEventsContext
 from app.tools.weather import WeatherContext
 
 
+from typing import Any
+
 class PricingProductContext(BaseModel):
     """Product pricing context for a single item within a batch request."""
 
@@ -21,11 +23,13 @@ class PricingProductContext(BaseModel):
 
     product_id: str = Field(..., min_length=1, description="Unique product ID")
     product_name: str | None = Field(default=None, description="Optional product name")
-    category: str | None = Field(default=None, description="Optional product category")
+    category: str | None = Field(default="General", description="Optional product category")
     inventory: InventoryMetrics
     demand: DemandContext
     expiry: ExpiryContext
-    risk_assessment: RiskAssessmentResult
+    risk_assessment: RiskAssessmentResult | None = Field(
+        default=None, description="Optional risk assessment result"
+    )
     weather_context: WeatherContext | None = Field(
         default=None, alias="weather"
     )
@@ -33,11 +37,55 @@ class PricingProductContext(BaseModel):
         default=None, alias="local_events_context"
     )
 
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_pricing_product(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "product_id" not in data and "id" in data:
+                data["product_id"] = data["id"]
+            if "product_name" not in data and "name" in data:
+                data["product_name"] = data["name"]
+            if "risk_assessment" not in data or data["risk_assessment"] is None:
+                data["risk_assessment"] = {
+                    "risk_level": "MEDIUM",
+                    "reason": "Default pricing context risk evaluation",
+                    "confidence": 0.8,
+                }
+        return data
+
 
 class PricingBatchRequest(BaseModel):
     """Input contract for batch pricing recommendation request."""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(
+        populate_by_name=True,
+        json_schema_extra={
+            "example": {
+                "store_id": "store-cairo-01",
+                "products": [
+                    {
+                        "product_id": "prod-100",
+                        "product_name": "Fresh Milk 1L",
+                        "category": "Dairy",
+                        "inventory": {
+                            "quantity": 25,
+                            "original_price": 35.0,
+                            "current_price": 35.0,
+                            "price_floor": 20.0,
+                        },
+                        "demand": {
+                            "sales_velocity": 2.5,
+                            "historical_average_daily_sales": 5.0,
+                        },
+                        "expiry": {
+                            "expires_at": "2026-08-20T12:00:00Z",
+                            "hours_remaining": 18.0,
+                        },
+                    }
+                ],
+            }
+        },
+    )
 
     store_id: str = Field(..., min_length=1, description="Originating store ID")
     store_policy: StorePolicy | None = Field(
