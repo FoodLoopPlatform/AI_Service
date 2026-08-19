@@ -38,9 +38,44 @@ async def lifespan(app: FastAPI):
     logger.info("Shutting down %s...", settings.APP_NAME)
 
 
+tags_metadata = [
+    {
+        "name": "health",
+        "description": "Liveness and readiness health checks for service monitoring and load balancers.",
+    },
+    {
+        "name": "monitoring",
+        "description": "Inventory risk evaluation, shelf-life pressure assessment, and routing (`NO_ACTION` vs `PRICING`).",
+    },
+    {
+        "name": "pricing",
+        "description": "Batch dynamic pricing recommendation engine (0–15% discount) and historical knowledge ingestion.",
+    },
+]
+
 app = FastAPI(
-    title=settings.APP_NAME,
+    title="FoodLoop AI Service API",
+    description="""
+# 🥦 FoodLoop AI Service API 🚀
+
+Autonomous Multi-Agent Microservice powering real-time inventory risk monitoring and dynamic pricing optimization.
+
+### 🌟 Key Features
+* 🛡️ **Inventory Risk Monitoring**: Automated evaluation of shelf-life, sales velocity, and risk pressure.
+* 🏷️ **Dynamic Pricing Agent**: Batch-optimized LLM and rule-based discount recommendations (0–15%).
+* 📚 **RAG Knowledge Ingestion**: Embeds and indexes historical pricing outcomes into Qdrant vector store.
+* ⚡ **High Availability**: Deterministic business fallbacks when external LLM gateways are unavailable.
+
+---
+* **Swagger UI Documentation**: `/docs`
+* **ReDoc Documentation**: `/redoc`
+* **OpenAPI Specification**: `/openapi.json`
+""",
     version=settings.APP_VERSION,
+    openapi_tags=tags_metadata,
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json",
     lifespan=lifespan,
 )
 
@@ -56,11 +91,13 @@ app.include_router(pricing_router)
 # Global Exception Handlers
 @app.exception_handler(RequestValidationError)
 async def request_validation_exception_handler(request: Request, exc: RequestValidationError):
+    logger.error("Request validation failed for %s: %s", request.url.path, exc)
     return JSONResponse(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        status_code=getattr(status, "HTTP_422_UNPROCESSABLE_CONTENT", 422),
         content={
             "error": "validation_error",
             "message": str(exc),
+            "details": exc.errors() if hasattr(exc, "errors") else None,
         },
     )
 
@@ -68,6 +105,7 @@ async def request_validation_exception_handler(request: Request, exc: RequestVal
 @app.exception_handler(ValidationError)
 @app.exception_handler(ValueError)
 async def domain_validation_exception_handler(request: Request, exc: Exception):
+    logger.error("Validation error for %s: %s", request.url.path, exc)
     return JSONResponse(
         status_code=status.HTTP_400_BAD_REQUEST,
         content={
@@ -80,21 +118,23 @@ async def domain_validation_exception_handler(request: Request, exc: Exception):
 @app.exception_handler(VectorStoreError)
 @app.exception_handler(EmbeddingProviderError)
 async def infrastructure_exception_handler(request: Request, exc: Exception):
+    logger.error("Infrastructure error for %s: %s", request.url.path, exc, exc_info=True)
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={
             "error": "retrieval_error",
-            "message": "Retrieval infrastructure error occurred.",
+            "message": f"Retrieval infrastructure error: {str(exc)}",
         },
     )
 
 
 @app.exception_handler(Exception)
 async def generic_exception_handler(request: Request, exc: Exception):
+    logger.error("Unhandled exception processing %s: %s", request.url.path, exc, exc_info=True)
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={
             "error": "internal_error",
-            "message": "An unexpected error occurred during request processing.",
+            "message": f"An error occurred during request processing: {str(exc)}",
         },
     )
