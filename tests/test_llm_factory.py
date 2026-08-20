@@ -3,6 +3,7 @@ from langchain_openai import ChatOpenAI
 
 from app.config.settings import settings
 from app.llm import get_llm
+from app.llm.iti import ChatITI
 
 
 def test_settings_read_openai_model():
@@ -12,8 +13,18 @@ def test_settings_read_openai_model():
 
 def test_get_llm_uses_configured_model():
     llm = get_llm()
-    assert isinstance(llm, ChatOpenAI)
     assert llm.model_name == settings.OPENAI_MODEL
+
+
+def test_get_llm_returns_chat_iti_for_iti_base_url():
+    llm = get_llm(base_url="http://apiaccess.iti.net.eg/api/v1")
+    assert isinstance(llm, ChatITI)
+    assert llm.model_name == settings.OPENAI_MODEL
+
+
+def test_get_llm_returns_chat_openai_for_standard_url():
+    llm = get_llm(base_url="https://api.openai.com/v1")
+    assert isinstance(llm, ChatOpenAI)
 
 
 def test_get_llm_temperature_is_zero():

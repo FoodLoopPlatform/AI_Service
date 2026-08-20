@@ -64,9 +64,11 @@ def pricing_recommendation(state: PricingAgentState) -> dict:
 
         llm = get_llm().with_structured_output(PricingBatchLLMResult)
 
+        from langchain_core.messages import SystemMessage, HumanMessage
+
         messages = [
-            {"role": "system", "content": PRICING_SYSTEM_PROMPT},
-            {"role": "user", "content": user_prompt},
+            SystemMessage(content=PRICING_SYSTEM_PROMPT),
+            HumanMessage(content=user_prompt),
         ]
 
         llm_result: PricingBatchLLMResult = llm.invoke(messages)
