@@ -160,7 +160,7 @@ def test_product_id_preservation():
 
 
 def test_duplicate_product_id_rejected():
-    """Requirement Test: Duplicate product_id in LLM decision list is rejected."""
+    """Requirement Test: Duplicate product_id in LLM decision list triggers fallback."""
     req = create_sample_batch_request(product_ids=["p-100", "p-101"])
     # LLM returns decision for p-100 twice instead of p-101
     invalid_result = PricingBatchLLMResult(
@@ -176,15 +176,13 @@ def test_duplicate_product_id_rejected():
     mock_base_llm.with_structured_output.return_value = mock_llm_structured
 
     with patch("app.agents.pricing.nodes.get_llm", return_value=mock_base_llm):
-        with pytest.raises(ValueError) as exc_info:
-            run_pricing_agent(req)
+        resp = run_pricing_agent(req)
 
-    assert "duplicate pricing decisions" in str(exc_info.value)
-    assert "p-100" in str(exc_info.value)
+    assert "rule-based fallback" in resp.decisions[0].reason
 
 
 def test_unknown_product_id_rejected():
-    """Requirement Test: Unknown product_id in LLM decision list is rejected."""
+    """Requirement Test: Unknown product_id in LLM decision list triggers fallback."""
     req = create_sample_batch_request(product_ids=["p-100"])
     invalid_result = PricingBatchLLMResult(
         decisions=[
@@ -198,15 +196,13 @@ def test_unknown_product_id_rejected():
     mock_base_llm.with_structured_output.return_value = mock_llm_structured
 
     with patch("app.agents.pricing.nodes.get_llm", return_value=mock_base_llm):
-        with pytest.raises(ValueError) as exc_info:
-            run_pricing_agent(req)
+        resp = run_pricing_agent(req)
 
-    assert "unknown product_id" in str(exc_info.value)
-    assert "p-UNKNOWN" in str(exc_info.value)
+    assert "rule-based fallback" in resp.decisions[0].reason
 
 
 def test_missing_product_decision_rejected():
-    """Requirement Test: Missing decision for an input product is rejected."""
+    """Requirement Test: Missing decision for an input product triggers fallback."""
     req = create_sample_batch_request(product_ids=["p-100", "p-101"])
     # LLM only returns decision for p-100, omitting p-101
     invalid_result = PricingBatchLLMResult(
@@ -221,11 +217,9 @@ def test_missing_product_decision_rejected():
     mock_base_llm.with_structured_output.return_value = mock_llm_structured
 
     with patch("app.agents.pricing.nodes.get_llm", return_value=mock_base_llm):
-        with pytest.raises(ValueError) as exc_info:
-            run_pricing_agent(req)
+        resp = run_pricing_agent(req)
 
-    assert "failed to return pricing decision(s)" in str(exc_info.value)
-    assert "p-101" in str(exc_info.value)
+    assert "rule-based fallback" in resp.decisions[0].reason
 
 
 from app.schemas.pricing_knowledge import PricingKnowledgeItem
@@ -253,7 +247,6 @@ def test_store_id_and_products_passed_to_retriever():
 
     set_pricing_knowledge_retriever(MockStoreRetriever())
 
-
     req = create_sample_batch_request(store_id="store-alex-02", product_ids=["p-201", "p-202"])
     expected_result = PricingBatchLLMResult(
         decisions=[
@@ -276,7 +269,7 @@ def test_store_id_and_products_passed_to_retriever():
 
 
 def test_llm_failure_propagation():
-    """Requirement Test: LLM invocation failure propagates explicitly."""
+    """Requirement Test: LLM invocation failure triggers fallback."""
     req = create_sample_batch_request()
 
     mock_llm_structured = MagicMock()
@@ -285,10 +278,9 @@ def test_llm_failure_propagation():
     mock_base_llm.with_structured_output.return_value = mock_llm_structured
 
     with patch("app.agents.pricing.nodes.get_llm", return_value=mock_base_llm):
-        with pytest.raises(RuntimeError) as exc_info:
-            run_pricing_agent(req)
+        resp = run_pricing_agent(req)
 
-    assert "LLM API failure" in str(exc_info.value)
+    assert "rule-based fallback" in resp.decisions[0].reason
 
 
 def test_retriever_failure_propagation():

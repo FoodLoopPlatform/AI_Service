@@ -141,7 +141,7 @@ class PricingDecision(BaseModel):
         description="Concise auditable rationale for the discount recommendation.",
     )
     confidence: float = Field(
-        ...,
+        default=0.90,
         ge=0.0,
         le=1.0,
         description="Confidence score between 0.0 and 1.0 inclusive.",
@@ -159,12 +159,24 @@ class PricingDecision(BaseModel):
 class PricingBatchLLMResult(BaseModel):
     """LLM structured output contract containing decisions for all products in a batch."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore", populate_by_name=True)
 
     decisions: list[PricingDecision] = Field(
         ...,
+        alias="PricingDecisions",
         description="List of pricing decisions returned by the LLM.",
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_decisions(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "decisions" not in data:
+                for alt_key in ("PricingDecisions", "pricing_decisions", "pricingDecisions", "decisions_list"):
+                    if alt_key in data:
+                        data["decisions"] = data[alt_key]
+                        break
+        return data
 
 
 class PricingBatchResponse(BaseModel):

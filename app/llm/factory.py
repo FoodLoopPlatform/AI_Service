@@ -23,6 +23,17 @@ def get_llm(
     resolved_api_key = api_key if api_key is not None else settings.OPENAI_API_KEY
     resolved_base_url = base_url if base_url is not None else settings.OPENAI_BASE_URL
 
+    # Detect ITI Gateway endpoint and return custom ChatITI adapter
+    if resolved_base_url and "iti.net.eg" in resolved_base_url:
+        from app.llm.iti import ChatITI
+        return ChatITI(
+            model_name=resolved_model,
+            api_key=resolved_api_key or "",
+            base_url=resolved_base_url,
+            temperature=temperature,
+            timeout=settings.OPENAI_TIMEOUT_SECONDS,
+        )
+
     # OpenAI SDK requires a non-empty string for client initialization.
     # A placeholder ensures structural instantiation succeeds without real credentials.
     effective_api_key = resolved_api_key if resolved_api_key else "placeholder-api-key"
